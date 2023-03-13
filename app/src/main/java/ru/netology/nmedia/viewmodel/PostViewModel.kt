@@ -72,33 +72,10 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun likeById(id: Long, likedByMe: Boolean) {
         thread {
-//            val old = _data.value?.posts.orEmpty()
-//
-//
-//            try {
-//                val post = repository.likeById(id, likedByMe)
-//                _data.value?.posts.orEmpty()
-//                    .find { it.id == id }
-//                    ?.let {it.likes = post.likes}
-//                val posts = _data.value?.posts.orEmpty()
-//
-//                _data.postValue(_data.value?.copy(posts = posts))
-//            } catch (e: IOException) {
-//                _data.postValue(_data.value?.copy(posts = old))
-//            }
-            repository.likeById(id, likedByMe)
-
-            // Начинаем загрузку
-            _data.postValue(FeedModel(loading = true))
-            try {
-                // Данные успешно получены
-                val posts = repository.getAll()
-                FeedModel(posts = posts, empty = posts.isEmpty())
-            } catch (e: IOException) {
-                // Получена ошибка
-                FeedModel(error = true)
-            }.also(_data::postValue)
-
+                val likedPost = repository.likeById(id, likedByMe)
+                _data.postValue(
+                    FeedModel(posts = _data.value?.posts.orEmpty()
+                        .map { if (it.id == id) likedPost else it }))
         }
     }
 
