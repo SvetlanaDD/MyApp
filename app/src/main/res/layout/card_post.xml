@@ -21,7 +21,6 @@
             app:layout_constraintBottom_toBottomOf="@id/header"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/ic_netology_original_48dp"
             tools:srcCompat="@sample/posts.json/data/authorAvatar" />
 
         <TextView
