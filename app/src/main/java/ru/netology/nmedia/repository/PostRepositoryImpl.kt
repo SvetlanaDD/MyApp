@@ -1,121 +1,83 @@
 package ru.netology.nmedia.repository
 
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.map
 import ru.netology.nmedia.api.PostsApi
+import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.entity.PostEntity
+import ru.netology.nmedia.entity.toEntity
+import java.io.IOException
 
-class PostRepositoryImpl: PostRepository {
+class PostRepositoryImpl(private val postDao: PostDao): PostRepository {
+    override val data: LiveData<List<Post>> = postDao.getAll().map{it.map(PostEntity::toDto)}
 
-    override fun getAllAsync(callback: PostRepository.AsyncCallback<List<Post>>) {
-
-        PostsApi.retrofitService.getAll().enqueue(object : Callback <List<Post>> {
-            override fun onResponse(call: Call<List<Post>>, response: Response<List<Post>>) {
-                if (!response.isSuccessful) {
-                    if (response.code() in 300 .. 399) {
-                        callback.onError(java.lang.RuntimeException("${response.code()} перенаправление"))
-                    }
-                    if (response.code() in 400 .. 499) {
-                        callback.onError(java.lang.RuntimeException("${response.code()} ошибка клиента"))
-                    }
-                    if (response.code() in 500 .. 599) {
-                        callback.onError(java.lang.RuntimeException("${response.code()} ошибка сервера"))
-                    }
-
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-
-                callback.onSuccess(response.body() ?: throw java.lang.RuntimeException("body is null"))
+    override suspend fun getAll() {
+        try {
+            val response = PostsApi.retrofitService.getAll()
+            if (!response.isSuccessful) {
+                throw Exception ("Api error")
             }
 
-            override fun onFailure(call: Call<List<Post>>, t: Throwable) {
-                callback.onError(java.lang.RuntimeException(t))
-            }
-        })
-    }
-
-    override fun likedByIdAsync(id: Long, likedByMe: Boolean, callback: PostRepository.AsyncCallback<Post>) {
-        if (!likedByMe){
-            PostsApi.retrofitService.likeById(id).enqueue(object : Callback <Post> {
-                override fun onResponse(call: Call<Post>, response: Response<Post>) {
-                    if (!response.isSuccessful) {
-                        if (response.code() in 300 .. 399) callback.onError(java.lang.RuntimeException( "${response.code()} перенаправление" ))
-                        if (response.code() in 400 .. 499) callback.onError(java.lang.RuntimeException( "${response.code()} ошибка клиента" ))
-
-                        callback.onError(java.lang.RuntimeException(response.message()))
-                        return
-                    }
-
-                    callback.onSuccess(response.body() ?: throw java.lang.RuntimeException("body is null"))
-                }
-
-                override fun onFailure(call: Call<Post>, t: Throwable) {
-                    callback.onError(java.lang.RuntimeException(t))
-                }
-            })
-        }else{
-            PostsApi.retrofitService.dislikeById(id).enqueue(object : Callback <Post> {
-                override fun onResponse(call: Call<Post>, response: Response<Post>) {
-                    if (!response.isSuccessful) {
-                        if (response.code() in 300 .. 399) callback.onError(java.lang.RuntimeException( "${response.code()} перенаправление" ))
-                        if (response.code() in 400 .. 499) callback.onError(java.lang.RuntimeException( "${response.code()} ошибка клиента" ))
-
-                        callback.onError(java.lang.RuntimeException(response.message()))
-                        return
-                    }
-
-                    callback.onSuccess(response.body() ?: throw java.lang.RuntimeException("body is null"))
-                }
-
-                override fun onFailure(call: Call<Post>, t: Throwable) {
-                    callback.onError(java.lang.RuntimeException(t))
-                }
-            })
+            val body = response.body() ?: throw Exception("Body is null")
+            postDao.insert(body.toEntity())
+        } catch (e: IOException) {
+            throw Exception ("Network error")
+        } catch (e: Exception) {
+            throw Exception ("Unknown error")
         }
 
     }
 
-    override fun saveAsync(post: Post, callback: PostRepository.AsyncCallback<Post>) {
+    override suspend fun likedById(id: Long, likeByMe: Boolean) {
 
-        PostsApi.retrofitService.save(post).enqueue(object : Callback <Post> {
-            override fun onResponse(call: Call<Post>, response: Response<Post>) {
+        try {
+            if (!likeByMe) {val response = PostsApi.retrofitService.likeById(id)
                 if (!response.isSuccessful) {
-                    if (response.code() in 300 .. 399) callback.onError(java.lang.RuntimeException( "${response.code()} перенаправление" ))
-                    if (response.code() in 400 .. 499) callback.onError(java.lang.RuntimeException( "${response.code()} ошибка клиента" ))
+                    throw Exception ("Api error")
+                }}
+            else {val response = PostsApi.retrofitService.dislikeById(id)
+                if (!response.isSuccessful) {
+                    throw Exception ("Api error")
+                }}
 
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-
-                callback.onSuccess(response.body() ?: throw java.lang.RuntimeException("body is null"))
-            }
-
-            override fun onFailure(call: Call<Post>, t: Throwable) {
-                callback.onError(java.lang.RuntimeException(t))
-            }
-        })
+            postDao.likeById(id)
+        } catch (e: IOException) {
+            throw Exception ("Network error")
+        } catch (e: Exception) {
+            throw Exception ("Unknown error")
+        }
     }
 
-    override fun removeByIdAsync(id: Long, callback: PostRepository.AsyncCallback<Unit>) {
-
-        PostsApi.retrofitService.removeById(id).enqueue(object : Callback <Unit> {
-            override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
-                if (!response.isSuccessful) {
-                    if (response.code() in 300 .. 399) callback.onError(java.lang.RuntimeException( "${response.code()} перенаправление" ))
-                    if (response.code() in 400 .. 499) callback.onError(java.lang.RuntimeException( "${response.code()} ошибка клиента" ))
-
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-
-                callback.onSuccess(response.body() ?: throw java.lang.RuntimeException("body is null"))
+    override suspend fun save(post: Post) {
+        try {
+            val response = PostsApi.retrofitService.save(post)
+            if (!response.isSuccessful) {
+                throw Exception ("Api error")
             }
 
-            override fun onFailure(call: Call<Unit>, t: Throwable) {
-                callback.onError(java.lang.RuntimeException(t))
-            }
-        })
+            val body = response.body() ?: throw Exception("Body is null")
+            postDao.insert(PostEntity.fromDto(body))
+        } catch (e: IOException) {
+            throw Exception ("Network error")
+        } catch (e: Exception) {
+            throw Exception ("Unknown error")
+        }
     }
+
+    override suspend fun removeById(id: Long) {
+        try {
+            val response = PostsApi.retrofitService.removeById(id)
+            if (!response.isSuccessful) {
+                throw Exception ("Api error")
+            }
+
+            postDao.removeById(id)
+        } catch (e: IOException) {
+            throw Exception ("Network error")
+        } catch (e: Exception) {
+            throw Exception ("Unknown error")
+        }
+    }
+
 }
