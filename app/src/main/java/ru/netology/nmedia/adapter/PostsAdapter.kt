@@ -56,7 +56,6 @@ class PostViewHolder(
             // в адаптере
             like.isChecked = post.likedByMe
             like.text = "${post.likes}"
-
             if (post.attachment == null) {
                 binding.attachment.visibility = View.GONE
             } else {
